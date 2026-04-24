@@ -1,0 +1,6 @@
+# ESP-IDF build artifacts
+diag/build/
+diag/sdkconfig
+diag/sdkconfig.old
+diag/dependencies.lock
+diag/managed_components/
