@@ -10,9 +10,13 @@ We need to migrate the project to the MC206H without throwing away the printer-a
 
 ## Known facts about the MC206H
 
-- TTL serial interface, default 9600 baud (per included paper insert).
-- Vendor product page lists "RS232/TTL+USB" with RS-232 as default — contradicts the in-box paper. The in-box paper takes precedence for the specific unit, but we will verify via the printer's self-test before any wiring (TTL vs RS-232 mismatch would fry the C3's GPIOs).
-- Almost certainly speaks ESC/POS or a near-superset (most printers in this class do), but this is unverified until we run a real print test.
+Confirmed via the printer's self-test page (FEED held while powering on) on 2026-04-26:
+
+- **Command mode: EPSON (ESC/POS)** — same family as the CSN-A2; existing command-byte tables in SPEC.md and `diag/` apply.
+- **Interface: USB & TTL** — both available simultaneously. We will use the TTL pins. The vendor product page's claim of "RS-232 default" is incorrect for this unit; ignore it.
+- **Baud: 9600, 8N1** — matches `diag/`'s existing UART config; no code change needed there.
+
+This collapses what would have been Phase 2's protocol-uncertainty: ESC/POS compatibility is no longer in question, only print quality (i.e., whether the heating defaults baked into `diag/` produce legible marks).
 
 ## Strategy
 
@@ -29,25 +33,27 @@ Alternatives considered and rejected:
 
 ### Phase 1 — Repurpose `diag/` as MC206H acceptance test
 
-**Code (`diag/main/main.c`):** likely no changes needed. The firmware already sends standard ESC/POS init + ESC 7 heating params + printable text at 9600 baud on UART1 (TX=GPIO21, RX=GPIO20). All printer-agnostic ESC/POS.
+**Code (`diag/main/main.c`):** no changes needed. The firmware already sends standard ESC/POS init + ESC 7 heating params + printable text at 9600 baud on UART1 (TX=GPIO21, RX=GPIO20), which exactly matches the MC206H's confirmed config.
 
 **Spec (`diagnostic-firmware-spec.md`):**
 - Retitle: "CSN-A2 Diagnostic Firmware" → "MC206H Acceptance Test" (or similar).
 - Reframe purpose: from "is this damaged head still alive" to "does this new unit speak ESC/POS at 9600 baud and print legibly".
 - Update **Hardware** section: replace CSN-A2 with MC206H; remove the over-voltage backstory.
-- Add a **pre-flight** subsection: power on the printer alone with FEED held → it prints a self-test/config page → confirm reported mode is "TTL" and note the baud rate **before** wiring it to the C3. If the page reports RS-232, do not connect — find the mode switch first. If the reported baud differs from 9600, update `uart_config_t.baud_rate` in `diag/main/main.c` and rebuild before flashing.
+- Add a **pre-flight** subsection documenting the self-test procedure (power on with FEED held → printer prints its config page) and what to look for: command mode `EPSON(ESC/POS)`, interface includes `TTL`, baud 9600 8N1. This unit has been verified, but the procedure documents how to verify any future replacement and should run before connecting to the C3.
 - Update **Interpretation** section: the success path is "Pass 1 prints cleanly" (defaults are fine); Pass 3's existence is now about confirming the head can drive every element rather than a last-ditch test on damaged hardware.
 
 **Optional simplification:** since stress-testing damaged hardware is no longer the goal, we could collapse three passes to one. We'll keep all three for now — they're already written, they cost nothing extra to run, and pass 1 vs pass 3 output gives a useful signal for whether the default heating params will need retuning in `SPEC.md`.
 
 ### Phase 2 — Run the diag firmware
 
-Flash and observe.
+With protocol compatibility already confirmed, the remaining unknown is print quality across the three heating-parameter presets.
 
-- **Marks come out, legible across all three passes** → MC206H speaks ESC/POS, defaults are fine. Note which pass produced the cleanest output. Proceed to Phase 3a.
-- **Marks come out, but only on later (hotter) passes** → ESC/POS works; defaults need retuning. Note the best-looking pass's `n1/n2/n3` values. Proceed to Phase 3a, applying those values as the new default.
-- **Paper advances cleanly through all passes but no marks** → ESC/POS commands are accepted (the LF that advances paper is universal) but either (a) the printer uses different command bytes for printable text, or (b) it expects different framing/encoding. Proceed to Phase 3b.
-- **Paper doesn't advance / nothing happens / `ESP_LOGI` shows nothing** → wiring or baud or mode (RS-232 not switched to TTL) issue. Debug before drawing any conclusion about protocol compatibility.
+Flash and observe:
+
+- **Marks come out, legible across all three passes** → defaults are fine. Note which pass produced the cleanest output (almost always pass 1 for a healthy unit). Proceed to Phase 3a using the existing defaults.
+- **Marks come out, but only on later (hotter) passes** → defaults are too conservative for this unit. Note the best-looking pass's `n1/n2/n3` values and apply them as the new default in Phase 3a.
+- **Paper advances cleanly but no marks** → unexpected, since ESC/POS is confirmed. Most likely cause is wiring (TX/RX swapped, missing common ground, or a damaged head). Debug before drawing protocol conclusions; Phase 3b stays as a fallback only if the head turns out to also be dead.
+- **Paper doesn't advance / nothing happens / `ESP_LOGI` shows nothing** → wiring or UART config issue. Debug before continuing.
 
 ### Phase 3a — In-place SPEC.md edits (the easy path)
 
