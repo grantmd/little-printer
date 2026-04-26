@@ -1,10 +1,10 @@
-# CSN-A2 Diagnostic Firmware
+# MC206H Acceptance Test Firmware
 
 ## Purpose
 
-Minimal ESP-IDF firmware for XIAO ESP32-C3 that sends aggressive print commands to a CSN-A2 thermal printer to determine whether any heating elements in the print head are still functional after suspected over-voltage damage.
+Minimal ESP-IDF firmware for XIAO ESP32-C3 that exercises a newly-acquired MC206H thermal printer with standard ESC/POS commands at three progressively more aggressive heating-parameter presets, to verify the printer is wired correctly, speaks the expected protocol, and produces legible output before building the full briefing firmware on top.
 
-**This is throwaway diagnostic code**, not the start of the main project. Do not pull in weather APIs, Wi-Fi, scheduling, or any of the scope from `SPEC.md`. Target: smallest possible firmware that exercises the printer with maximum heat.
+This is throwaway acceptance-test code, not the start of the main project. Do not pull in weather APIs, Wi-Fi, scheduling, or any of the scope from `SPEC.md`. Target: smallest possible firmware that exercises the printer.
 
 ## Success criteria
 
@@ -15,12 +15,25 @@ Minimal ESP-IDF firmware for XIAO ESP32-C3 that sends aggressive print commands 
 ## Hardware
 
 - **XIAO ESP32-C3** powered via USB-C
-- **CSN-A2 thermal printer** powered by its own 9V 3A supply
+- **MC206H thermal printer** powered by its own external supply (verify voltage/current spec on the unit's label or datasheet — typical for this class is 5–9V at 2A peak)
 - Wiring:
   - C3 **GPIO21** → printer RX (data)
   - C3 **GPIO20** ← printer TX (data, unused but wire it)
   - C3 **GND** → printer data GND (which is internally tied to power GND — do NOT also run a wire to the 9V supply ground)
-- Printer baud rate: **try 9600 first**. If garbage / nothing, rebuild with 19200 and try again. The baud is set at `uart_config_t.baud_rate` — easy to change.
+- Printer baud rate: **9600** (confirmed via the MC206H self-test on this unit). If you swap the printer, re-run the self-test and update `uart_config_t.baud_rate` in `main/main.c` if it differs.
+
+## Pre-flight
+
+Before connecting any wires to the C3, verify the printer is in a state the firmware expects:
+
+1. With the printer's data leads disconnected, hold the **FEED** button while connecting power. The printer will print a configuration page.
+2. Confirm the page reports:
+   - **Command mode:** `EPSON(ESC/POS)` — anything else means the firmware's command bytes won't work.
+   - **Interface:** includes `TTL` — RS-232 mode would damage the C3's GPIOs.
+   - **Baud:** `9600, 8N1` — anything else means update `uart_config_t.baud_rate` in `main/main.c` and rebuild before flashing.
+3. If any of those don't match, do not proceed to wiring until you've reconfigured the printer (DIP switch / button combo / different baud) or updated the firmware to match.
+
+This particular MC206H was verified against these criteria on 2026-04-26.
 
 ## Project structure
 
@@ -107,14 +120,17 @@ If the printer is on the correct supply and wired correctly, within ~30 seconds 
 
 ## Interpretation
 
-- **All three passes fully blank:** head is dead across all elements. Replace the printer.
-- **Pass 3 shows partial/faint marks that 1 and 2 don't:** some elements survive but are damaged. Printer is technically working but won't produce legible output — replace.
-- **All three passes print clean text:** head is fine, the earlier issues were something else (paper, voltage, cabling). Unexpected given history, but possible.
-- **Nothing prints and `ESP_LOGI` also shows nothing on serial:** firmware isn't running or USB-CDC console isn't set up. Check `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in sdkconfig.
-- **Log messages appear but no print activity (no paper motion, no sound):** UART isn't reaching the printer. Check TX wiring and that you're on UART1, not UART0 (UART0 is the USB console on the C3).
+Expected outcomes for a healthy MC206H:
+
+- **All three passes print legibly:** acceptance complete. Note which pass produced the cleanest, sharpest output — those `n1/n2/n3` heating values become the recommended defaults for `SPEC.md`'s `thermal_printer_init` and the briefing firmware.
+- **Pass 1 too light, passes 2/3 better:** unit needs hotter defaults than typical. Use pass 2 or 3's values.
+- **Marks scattered or missing on every pass:** likely a wiring or supply problem, not a printer fault. Re-check TX/RX swap, common ground, supply current capacity. Re-run after correcting.
+- **Paper advances but no marks at all on any pass:** unexpected given the pre-flight passed. Most likely a damaged head or seriously wrong wiring. Investigate before drawing protocol conclusions.
+- **Paper doesn't advance and `ESP_LOGI` shows nothing on serial:** firmware isn't running or USB-CDC console isn't set up. Check `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in sdkconfig.
+- **Log messages appear but no print activity (no paper motion, no sound):** UART isn't reaching the printer. Check TX wiring and that you're on UART1 (UART0 is the USB console on the C3).
 
 ## Notes
 
 - Do NOT send `ESC 7` with values higher than listed — `n2=255` and `n3=2` are already at the edge of what the firmware accepts and are intended as a last-ditch diagnostic.
 - Do not let this firmware loop and repeat the aggressive passes. One cycle and halt. Repeated max-heat firing on an already-damaged head is pointless and potentially worsens failure modes.
-- Once diagnosis is complete, this project should be deleted. The real project uses `SPEC.md`.
+- Once acceptance is complete, this firmware can stay in the repo as a smoke test for future hardware swaps, or be deleted. The real project uses `SPEC.md`.
