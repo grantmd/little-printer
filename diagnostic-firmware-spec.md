@@ -132,5 +132,5 @@ Expected outcomes for a healthy MC206H:
 ## Notes
 
 - Do NOT send `ESC 7` with values higher than listed — `n2=255` and `n3=2` are already at the edge of what the firmware accepts and are intended as a last-ditch diagnostic.
-- Do not let this firmware loop and repeat the aggressive passes. One cycle and halt. Repeated max-heat firing on an already-damaged head is pointless and potentially worsens failure modes.
+- Do not let this firmware loop and repeat the aggressive passes. One cycle and halt. The pass-3 settings (`n2=255`, `n3=2`) are at the edge of safe operation; cycling them needlessly puts thermal stress on the head with no diagnostic value.
 - Once acceptance is complete, this firmware can stay in the repo as a smoke test for future hardware swaps, or be deleted. The real project uses `SPEC.md`.
