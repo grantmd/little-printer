@@ -55,7 +55,7 @@ static void run_pass(int num, const char *label,
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG, "CSN-A2 diagnostic firmware booting");
+    ESP_LOGI(TAG, "MC206H acceptance firmware booting");
 
     const uart_config_t cfg = {
         .baud_rate  = PRINTER_BAUD,
