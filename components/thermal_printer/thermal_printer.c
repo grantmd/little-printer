@@ -151,3 +151,33 @@ void thermal_printer_print_bitmap(uint16_t width_bytes,
     }
     vTaskDelay(pdMS_TO_TICKS(80));
 }
+
+esp_err_t thermal_printer_query_status(thermal_printer_status_t *out) {
+    if (!out) return ESP_ERR_INVALID_ARG;
+
+    /* Drop any leftover bytes in the RX buffer so we don't read a stale
+     * status byte from a prior call. */
+    uart_flush_input(s_uart);
+
+    /* DLE EOT 4 — transmit paper-sensor status. */
+    const uint8_t cmd[] = { 0x10, 0x04, 0x04 };
+    tx(cmd, sizeof(cmd));
+
+    uint8_t resp = 0;
+    int n = uart_read_bytes(s_uart, &resp, 1, pdMS_TO_TICKS(100));
+    if (n != 1) {
+        ESP_LOGW(TAG, "status query timed out");
+        return ESP_FAIL;
+    }
+
+    /* Per ESC/POS spec, DLE EOT 4 reply byte:
+     *   bit 2/3 — paper near end sensor (1 = near end)
+     *   bit 5/6 — paper end sensor      (1 = end)
+     * Bits 2 and 3 mirror each other; same for 5 and 6. We OR them. */
+    out->paper_near_end = (resp & 0x0C) != 0;
+    out->paper_end      = (resp & 0x60) != 0;
+
+    ESP_LOGI(TAG, "status: 0x%02X (paper_end=%d near_end=%d)",
+             resp, out->paper_end, out->paper_near_end);
+    return ESP_OK;
+}
