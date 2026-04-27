@@ -22,16 +22,21 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    /*
+     * Init the printer BEFORE Wi-Fi so its TX pin is driven (not floating)
+     * during the multi-second connect window. With it deferred until after
+     * Wi-Fi, the printer reads line noise during connect and prints garbage.
+     */
+    ESP_ERROR_CHECK(thermal_printer_init(PRINTER_UART_NUM,
+                                         PRINTER_TX_PIN,
+                                         PRINTER_RX_PIN,
+                                         CONFIG_PRINTER_BAUD));
+
     if (wifi_connect() != ESP_OK) {
         ESP_LOGE(TAG, "Wi-Fi connect failed; continuing without time sync");
     } else {
         time_sync_init();
     }
-
-    ESP_ERROR_CHECK(thermal_printer_init(PRINTER_UART_NUM,
-                                         PRINTER_TX_PIN,
-                                         PRINTER_RX_PIN,
-                                         CONFIG_PRINTER_BAUD));
 
     /* Boot one-liner so the paper confirms the device is alive. */
     char line[64];
