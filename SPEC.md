@@ -1,5 +1,7 @@
 # Desk Thermal Printer — Daily Briefing
 
+> **Status:** This is the original v1 design document, written before the printer migration and before the public-message-queue feature. Hardware/wiring/ESC-POS/APIs are still authoritative and current. The scheduler/firmware-task layout has evolved — for current behaviour see [README.md](./README.md) and the per-feature design docs in `docs/superpowers/specs/`. The "Future extensions" section near the bottom no longer reflects what's in flight.
+
 ## Project summary
 
 A XIAO ESP32-C3 drives a MC206H thermal printer to print a daily briefing at **09:00 America/Los_Angeles** containing:
@@ -467,11 +469,12 @@ Confirm this by checking `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` (or `CONFIG_ESP_
 
 ## Future extensions (out of scope for v1)
 
-- **MQTT subscriber** via the `esp-mqtt` component (first-party IDF) for ad-hoc "print this" messages
-- **Public webhook** fronted by a small service somewhere (Fly.io, Proxmox VM, etc.) that republishes to MQTT — lets friends leave notes without opening ports
+> **Update:** The "ad-hoc print this messages" item has shipped — see the public message queue feature documented in [README.md](./README.md) and `docs/superpowers/specs/2026-04-27-hourly-message-poll-design.md`. We chose HTTPS polling over MQTT for simpler firmware, but the same architectural intent. The remaining items below are still genuinely future work.
+
+- **Printer status feedback** via ESC/POS `DLE EOT n` real-time queries (paper-end, online/offline, error). Pending hardware verification of the printer's TX voltage; the wiring is in place but the firmware ignores reads today.
 - **Physical button** on a spare GPIO for on-demand affirmations / quotes
 - **Deep sleep + RTC alarm** for battery operation (requires handling Wi-Fi reconnect on wake, not hard but adds code)
 - **OTA updates** via `esp_https_ota` — nice once this lives somewhere inconvenient to flash by cable
 - Bluesky mentions digest, xkcd of the day, SpaceTraders contract status, weather alerts, etc.
 
-Architecturally, the cleanest path to multi-source is to move the "what should we print" decision off the C3 entirely — run a small service that owns all integrations and publishes to an MQTT topic, reducing the C3 to a dumb MQTT-to-print bridge. Worth keeping in mind as the firmware evolves.
+Architecturally, the cleanest path to multi-source remains: move "what should we print" decisions off the C3 entirely. The Fly.io message-queue service is a small step in that direction; future content sources can use the same shape.
