@@ -39,8 +39,14 @@ static esp_err_t event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-esp_err_t http_fetch(const char *url, char **out) {
-    *out = NULL;
+static esp_err_t do_request(esp_http_client_method_t method,
+                            const char *url,
+                            const char *header_name,
+                            const char *header_value,
+                            const char *content_type,
+                            const char *body_str,
+                            char **out) {
+    if (out) *out = NULL;
 
     body_t body = { 0 };
 
@@ -50,6 +56,7 @@ esp_err_t http_fetch(const char *url, char **out) {
         .user_data = &body,
         .crt_bundle_attach = esp_crt_bundle_attach,
         .timeout_ms = 10 * 1000,
+        .method = method,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
@@ -58,23 +65,56 @@ esp_err_t http_fetch(const char *url, char **out) {
         return ESP_FAIL;
     }
 
+    if (header_name && header_value) {
+        esp_http_client_set_header(client, header_name, header_value);
+    }
+    if (content_type) {
+        esp_http_client_set_header(client, "Content-Type", content_type);
+    }
+    if (body_str) {
+        esp_http_client_set_post_field(client, body_str, strlen(body_str));
+    }
+
     esp_err_t err = esp_http_client_perform(client);
     int status = err == ESP_OK ? esp_http_client_get_status_code(client) : -1;
     esp_http_client_cleanup(client);
 
     if (err != ESP_OK || status < 200 || status >= 300) {
-        ESP_LOGW(TAG, "fetch failed: err=%s status=%d url=%s",
+        ESP_LOGW(TAG, "%s failed: err=%s status=%d url=%s",
+                 method == HTTP_METHOD_POST ? "POST" : "GET",
                  esp_err_to_name(err), status, url);
         free(body.buf);
         return ESP_FAIL;
     }
 
-    if (!body.buf) {
-        /* 2xx with empty body — unusual but treat as success with empty string. */
-        body.buf = calloc(1, 1);
-        if (!body.buf) return ESP_ERR_NO_MEM;
+    if (out) {
+        if (!body.buf) {
+            body.buf = calloc(1, 1);
+            if (!body.buf) return ESP_ERR_NO_MEM;
+        }
+        *out = body.buf;
+    } else {
+        free(body.buf);
     }
-
-    *out = body.buf;
     return ESP_OK;
+}
+
+esp_err_t http_fetch(const char *url, char **out) {
+    return do_request(HTTP_METHOD_GET, url, NULL, NULL, NULL, NULL, out);
+}
+
+esp_err_t http_fetch_with_header(const char *url,
+                                 const char *header_name,
+                                 const char *header_value,
+                                 char **out) {
+    return do_request(HTTP_METHOD_GET, url, header_name, header_value, NULL, NULL, out);
+}
+
+esp_err_t http_post_json(const char *url,
+                         const char *header_name,
+                         const char *header_value,
+                         const char *body,
+                         char **out) {
+    return do_request(HTTP_METHOD_POST, url, header_name, header_value,
+                      "application/json", body, out);
 }
