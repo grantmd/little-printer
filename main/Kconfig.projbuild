@@ -36,4 +36,17 @@ config MESSAGES_TOKEN
     help
       Must match PRINTER_TOKEN on the Fly.io app. Generate with `openssl rand -hex 32`.
 
+config MESSAGES_START_HOUR
+    int "Start of messages waking-hours window (inclusive, local time)"
+    default 8
+    range 0 23
+    help
+      The hourly message poll only fires when the local hour is in the
+      half-open range [START_HOUR, END_HOUR).
+
+config MESSAGES_END_HOUR
+    int "End of messages waking-hours window (exclusive, local time)"
+    default 22
+    range 1 24
+
 endmenu
