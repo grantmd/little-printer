@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  host-tests:
+    name: Host-side unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run text_wrap test
+        run: |
+          cc -Wall -o test_text_wrap host_tests/test_text_wrap.c main/text_wrap.c
+          ./test_text_wrap
+
+      - name: Build and run weather_code test
+        run: |
+          cc -Wall -o test_weather_code host_tests/test_weather_code.c
+          ./test_weather_code
+
+  build-briefing:
+    name: Build briefing firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with ESP-IDF v5.5 (esp32c3)
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32c3
+          path: '.'
+
+  build-diag:
+    name: Build diag acceptance firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with ESP-IDF v5.5 (esp32c3)
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32c3
+          path: 'diag'

@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # to create releases
+
+jobs:
+  release:
+    name: Build firmware and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build briefing firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32c3
+          path: '.'
+
+      - name: Build diag acceptance firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32c3
+          path: 'diag'
+
+      - name: Bundle artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p release/briefing release/diag
+
+          cp build/little-printer.bin            release/briefing/
+          cp build/little-printer.elf            release/briefing/
+          cp build/bootloader/bootloader.bin     release/briefing/
+          cp build/partition_table/partition-table.bin release/briefing/
+
+          cp diag/build/diag.bin                 release/diag/
+          cp diag/build/diag.elf                 release/diag/
+          cp diag/build/bootloader/bootloader.bin     release/diag/
+          cp diag/build/partition_table/partition-table.bin release/diag/
+
+          cd release
+          zip -r "../briefing-${GITHUB_REF_NAME}.zip" briefing
+          zip -r "../diag-${GITHUB_REF_NAME}.zip"     diag
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            briefing-${{ github.ref_name }}.zip
+            diag-${{ github.ref_name }}.zip
+          generate_release_notes: true
