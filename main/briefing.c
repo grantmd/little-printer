@@ -62,6 +62,7 @@ void briefing_run(void) {
         if (sprite) {
             thermal_printer_set_justify('C');
             thermal_printer_print_bitmap(3, 24, sprite);
+            thermal_printer_feed(1);
         }
     }
 
