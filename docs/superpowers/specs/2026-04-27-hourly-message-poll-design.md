@@ -53,12 +53,11 @@ The two scheduling tasks (briefing_task, messages_task) are independent. Each ho
 
 ### Fly.io app (`fly-message-queue/`)
 
-Only two small edits:
+Only one small edit:
 
 - **`validate.go`:** `maxQueueSize` 5 → 3.
-- **`templates/index.html`:** add a one-line schedule note near the queue indicator: `"prints on the hour, 08:00–22:00 PT"`. Place it above the form, just under the existing `queue: N / M` indicator. The user's existing attribution footer at the bottom of the page stays untouched.
 
-No endpoint changes, no schema changes, no DB migration. The service that's already deployed at `little-printer.fly.dev` keeps working unchanged until the next `fly deploy`.
+The form template (`templates/index.html`) is left as-is — its existing attribution footer doesn't claim a schedule, so no copy needs updating. No endpoint changes, no schema changes, no DB migration. The service that's already deployed at `little-printer.fly.dev` keeps working unchanged until the next `fly deploy`.
 
 ### Firmware (`main/`)
 
@@ -203,7 +202,7 @@ Same shape as v1.1 — everything degrades gracefully:
 
 A single PR-equivalent series of commits, ordered roughly:
 
-1. Fly app: queue cap 5 → 3, form schedule note (one commit, deploys via `fly deploy` after merge).
+1. Fly app: queue cap 5 → 3 (one commit, deploys via `fly deploy` after merge).
 2. Firmware: strip messages block from `briefing.c`.
 3. Firmware: new `printer_lock.c/h` + init in main.
 4. Firmware: `briefing_run` takes the mutex.
@@ -225,5 +224,5 @@ The Fly app change can deploy independently before or after the firmware change 
 2. Submitting a message at 23:00 stays queued; prints at the next 08:00 along with anything else that came in overnight.
 3. The daily briefing at 09:00 contains weather + quote with no messages block, regardless of queue state.
 4. Submitting a 4th message when 3 are already queued returns 429 from `/submit`.
-5. The form at `https://little-printer-msgs.fly.dev/` shows `queue: N / 3` and a small note about the polling schedule.
+5. The form at `https://little-printer-msgs.fly.dev/` shows `queue: N / 3`.
 6. The C3 firmware survives both `briefing_task` and `messages_task` firing at 09:00 simultaneously without garbled output.
