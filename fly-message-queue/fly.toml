@@ -1,0 +1,36 @@
+# Fly config — adjust app name on first `fly launch`.
+app = "little-printer"
+primary_region = "sjc"
+
+[build]
+
+[env]
+  LISTEN_ADDR = ":8080"
+  DB_PATH     = "/data/queue.db"
+
+[[mounts]]
+  source      = "queue_data"
+  destination = "/data"
+
+[[services]]
+  internal_port = 8080
+  protocol      = "tcp"
+
+  [[services.ports]]
+    port     = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port     = 443
+    handlers = ["tls", "http"]
+
+[[services.tcp_checks]]
+  interval     = "30s"
+  timeout      = "5s"
+  grace_period = "10s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus     = 1
+  memory   = "256mb"
