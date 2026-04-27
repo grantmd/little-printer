@@ -7,7 +7,11 @@
 #include "esp_log.h"
 #include "cJSON.h"
 
+#include "config.h"
 #include "http_fetch.h"
+#include "printer_lock.h"
+#include "text_wrap.h"
+#include "thermal_printer.h"
 
 static const char *TAG = "messages";
 
@@ -110,4 +114,49 @@ esp_err_t messages_confirm(const int *ids, size_t n) {
     }
     ESP_LOGI(TAG, "confirmed %u message(s)", (unsigned)n);
     return ESP_OK;
+}
+
+/* Local copy of briefing.c's helper — kept simple to avoid sharing
+ * via a header, since it's only 4 lines. */
+static void println_indented(const char *line) {
+    char buf[80];
+    snprintf(buf, sizeof(buf), "  %s", line);
+    thermal_printer_println(buf);
+}
+
+esp_err_t messages_print_pending(void) {
+    message_t *msgs = NULL;
+    size_t n = 0;
+    if (messages_fetch_pending(&msgs, &n) != ESP_OK) {
+        free(msgs);
+        return ESP_FAIL;
+    }
+    if (n == 0) {
+        free(msgs);
+        return ESP_OK;
+    }
+
+    /* Take the printer mutex for the whole print so we don't interleave
+     * with briefing_run if both fire in the same minute. */
+    xSemaphoreTake(s_print_mutex, portMAX_DELAY);
+
+    int ids[8];
+    size_t to_confirm = n > 8 ? 8 : n;
+    for (size_t i = 0; i < to_confirm; i++) {
+        thermal_printer_set_justify('L');
+        text_wrap(msgs[i].message, PRINT_LINE_WIDTH - 4, &println_indented);
+        char attribution[48];
+        snprintf(attribution, sizeof(attribution), "       -- %s", msgs[i].sender);
+        thermal_printer_println(attribution);
+        thermal_printer_feed(1);
+        ids[i] = msgs[i].id;
+    }
+    thermal_printer_feed(3);
+    thermal_printer_sleep(60);
+
+    xSemaphoreGive(s_print_mutex);
+
+    esp_err_t err = messages_confirm(ids, to_confirm);
+    free(msgs);
+    return err;
 }
