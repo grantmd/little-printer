@@ -24,4 +24,16 @@ config PRINTER_BAUD
     help
       Match the rate reported on the printer's self-test page.
 
+config MESSAGES_BASE_URL
+    string "Base URL for the public message queue service"
+    default "https://little-printer-msgs.fly.dev"
+    help
+      Without trailing slash. The C3 fetches GET <url>/pending and POSTs to <url>/confirm.
+
+config MESSAGES_TOKEN
+    string "Bearer token for the message queue service"
+    default ""
+    help
+      Must match PRINTER_TOKEN on the Fly.io app. Generate with `openssl rand -hex 32`.
+
 endmenu
