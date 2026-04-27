@@ -125,6 +125,25 @@ static void println_indented(const char *line) {
 }
 
 esp_err_t messages_print_pending(void) {
+    /* Pre-flight: is the printer alive and ready? */
+    xSemaphoreTake(s_print_mutex, portMAX_DELAY);
+    thermal_printer_status_t pstatus;
+    esp_err_t qerr = thermal_printer_query_status(&pstatus);
+    xSemaphoreGive(s_print_mutex);
+
+    if (qerr != ESP_OK) {
+        ESP_LOGW(TAG, "printer not responding; deferring messages");
+        return ESP_FAIL;
+    }
+    if (pstatus.paper_end) {
+        ESP_LOGW(TAG, "printer out of paper; deferring messages");
+        return ESP_FAIL;
+    }
+    if (pstatus.paper_near_end) {
+        ESP_LOGW(TAG, "printer paper near end — printing anyway");
+    }
+
+    /* Fetch + print + confirm flow. */
     message_t *msgs = NULL;
     size_t n = 0;
     if (messages_fetch_pending(&msgs, &n) != ESP_OK) {
