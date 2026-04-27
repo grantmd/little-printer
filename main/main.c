@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -11,10 +12,20 @@
 #include "thermal_printer.h"
 #include "wifi.h"
 #include "time_sync.h"
-#include "weather.h"
-#include "quote.h"
+#include "briefing.h"
 
 static const char *TAG = "main";
+
+static void console_task(void *arg) {
+    while (1) {
+        int c = fgetc(stdin);
+        if (c == 'p' || c == 'P') {
+            ESP_LOGI(TAG, "console: manual briefing trigger");
+            briefing_run();
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
 
 void app_main(void) {
     ESP_LOGI(TAG, "little-printer booting");
@@ -23,34 +34,30 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    /* Init the printer early so GPIO21 isn't floating during Wi-Fi connect. */
     ESP_ERROR_CHECK(thermal_printer_init(PRINTER_UART_NUM,
                                          PRINTER_TX_PIN,
                                          PRINTER_RX_PIN,
                                          CONFIG_PRINTER_BAUD));
 
     if (wifi_connect() != ESP_OK) {
-        ESP_LOGE(TAG, "Wi-Fi connect failed; halting");
-        while (1) vTaskDelay(pdMS_TO_TICKS(60 * 1000));
-    }
-    time_sync_init();
-
-    /* Fetch + log both APIs once. */
-    weather_t w;
-    if (weather_fetch(&w) == ESP_OK) {
-        ESP_LOGI(TAG, "WEATHER: %dF, %s, wind %dmph",
-                 w.temp_f, w.description, w.wind_mph);
+        ESP_LOGE(TAG, "Wi-Fi connect failed; continuing offline");
     } else {
-        ESP_LOGW(TAG, "WEATHER: fetch failed");
+        time_sync_init();
     }
 
-    quote_t q;
-    if (quote_fetch(&q) == ESP_OK) {
-        ESP_LOGI(TAG, "QUOTE: \"%s\" — %s", q.body, q.author);
-    } else {
-        ESP_LOGW(TAG, "QUOTE: fetch failed");
-    }
+    char boot_line[64];
+    time_t now = time(NULL);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    snprintf(boot_line, sizeof(boot_line),
+             "booted %02d:%02d - briefing at %02d:%02d",
+             lt.tm_hour, lt.tm_min, CONFIG_PRINT_HOUR, CONFIG_PRINT_MINUTE);
+    thermal_printer_set_justify('C');
+    thermal_printer_println(boot_line);
+    thermal_printer_feed(2);
 
-    ESP_LOGI(TAG, "API test complete; idling");
+    xTaskCreate(console_task, "console", 4096, NULL, 5, NULL);
+
+    ESP_LOGI(TAG, "ready — type 'p' on the serial console for a manual briefing");
     while (1) vTaskDelay(pdMS_TO_TICKS(60 * 1000));
 }
