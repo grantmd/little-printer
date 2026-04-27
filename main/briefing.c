@@ -1,6 +1,7 @@
 #include "briefing.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
@@ -12,6 +13,7 @@
 #include "weather.h"
 #include "quote.h"
 #include "text_wrap.h"
+#include "messages.h"
 
 static const char *TAG = "briefing";
 
@@ -102,6 +104,35 @@ void briefing_run(void) {
     thermal_printer_feed(1);
     thermal_printer_set_justify('C');
     thermal_printer_println("================================");
+
+    /* Optional messages block — only if the queue has anything pending. */
+    message_t *msgs = NULL;
+    size_t n = 0;
+    if (messages_fetch_pending(&msgs, &n) == ESP_OK && n > 0) {
+        thermal_printer_feed(2);
+        thermal_printer_set_justify('C');
+        thermal_printer_println("----- MESSAGES -----");
+        thermal_printer_feed(1);
+
+        thermal_printer_set_justify('L');
+        int printed_ids[8];
+        size_t to_confirm = n > 8 ? 8 : n;
+        for (size_t i = 0; i < to_confirm; i++) {
+            text_wrap(msgs[i].message, PRINT_LINE_WIDTH - 4, &println_indented);
+            char attribution[48];
+            snprintf(attribution, sizeof(attribution), "       -- %s", msgs[i].sender);
+            thermal_printer_println(attribution);
+            thermal_printer_feed(1);
+            printed_ids[i] = msgs[i].id;
+        }
+
+        thermal_printer_set_justify('C');
+        thermal_printer_println("================================");
+
+        messages_confirm(printed_ids, to_confirm);
+    }
+    free(msgs);
+
     thermal_printer_feed(3);
     thermal_printer_sleep(60);
 
