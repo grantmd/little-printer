@@ -16,39 +16,46 @@ Target framework is **ESP-IDF** (v5.x). Scope is intentionally small for v1. Fut
 - XIAO ESP32-C3 (Seeed Studio)
 - MC206H thermal printer (58mm paper)
 - Thermal paper roll, 58mm
-- **External 5V–9V DC power supply, minimum 2A (3A recommended)** — this is not negotiable; see power notes
-- Hookup wire; optionally a 2.54mm JST or screw terminal for the printer data leads
+- **External 5V–9V DC power supply, minimum 2.5A (3A recommended)** — this is not negotiable; see power notes. The MC206H ships with a 2-pin JST power connector; if your supply has a barrel jack (or anything else), splice a JST-to-barrel adapter between them. The unit used here is on a 9V 3A barrel supply via such an adapter.
+- The MC206H's data leads come pre-terminated in a 4-pin JST. Hookup wire is only needed if you splice into it.
 
 ---
 
 ## Wiring
 
-### Data — printer to XIAO C3 (3 wires)
+### Data — printer to XIAO C3 (4-pin JST, 3 wires used)
 
-| Printer lead          | Typical color | → | XIAO C3 pin (label / GPIO)  |
-| --------------------- | ------------- | - | --------------------------- |
-| GND (data)            | Black (thin)  | → | GND                         |
-| RX (printer input)    | Green         | → | **D6 / GPIO21** (UART1 TX)  |
-| TX (printer output)   | Yellow        | → | **D7 / GPIO20** (UART1 RX) — optional, for status reads |
+| Printer lead          | JST color (this MC206H) | → | XIAO C3 pin (label / GPIO)  |
+| --------------------- | ----------------------- | - | --------------------------- |
+| GND (data)            | Black                   | → | GND                         |
+| DTR                   | Red                     | → | **not connected**           |
+| RX (printer input)    | White                   | → | **D6 / GPIO21** (UART1 TX)  |
+| TX (printer output)   | Blue                    | → | **D7 / GPIO20** (UART1 RX) — optional, for status reads |
 
 Code uses GPIO numbers (`21`, `20`); the board silkscreen uses D6/D7. They refer to the same pins.
 
+**About DTR:** the printer drives DTR as a hardware-flow-control output (asserts when its input buffer fills). At our data rates (a few hundred bytes once a day, paced with `vTaskDelay` and `uart_wait_tx_done`) the buffer never fills, so DTR is unused. Leave it floating — do **not** tie it to ground or to a C3 GPIO.
+
+JST color assignments are not standardized across vendors. If a future replacement printer's JST has different colors, identify the leads by position on the connector or by continuity-testing to the printer's PCB silkscreen.
+
 ### Power — printer to external supply (separate from C3)
+
+The MC206H's power leads come on a 2-pin JST connector. Adapt to whatever your supply uses.
 
 | Printer lead            | → | Connection                    |
 | ----------------------- | - | ----------------------------- |
-| + (red, thick)          | → | Supply +V (5V–9V)             |
-| − (black, thick)        | → | Supply GND                    |
+| + (red)                 | → | Supply +V (5V–9V)             |
+| − (black)               | → | Supply GND                    |
 
-**Also tie the supply GND to the C3 GND.** Without a common ground, the UART won't work reliably.
+**Common ground:** the printer's data GND lead and its power GND are internally bonded inside the printer, so connecting the data-GND lead to the C3 (per the data wiring table above) establishes the common ground both rails need. Tying the supply GND directly to the C3 GND on top of that is redundant but harmless. Without any common ground, the UART won't work reliably.
 
 During development, power the C3 via its USB-C port. For the finished build, either keep USB-C (simplest) or tap the 5V supply through a small 3.3V buck into the C3's 5V pin.
 
 ### Critical power notes
 
-- The MC206H pulls **up to ~2A peak** when the thermal head fires. Do **not** power it from USB, the C3's pins, or anything that isn't a proper wall adapter or bench supply rated for the current. Undersized supplies cause dropped characters, brownouts, garbled prints, and occasionally toasted USB ports.
+- The MC206H's spec sheet calls for a minimum 2.5A supply when the thermal head fires. Do **not** power it from USB, the C3's pins, or anything that isn't a proper wall adapter or bench supply rated for the current. Undersized supplies cause dropped characters, brownouts, garbled prints, and occasionally toasted USB ports.
 - The printer's RX is 5V-tolerant and accepts 3.3V logic from the C3's TX without level shifting.
-- If you wire up printer TX → C3 RX for status reads, note that some MC206H units drive 5V on TX. Use a simple divider (e.g., 10 kΩ + 20 kΩ) or a cheap bidirectional level shifter on that single line. Outbound (C3 → printer) needs nothing.
+- If you wire up printer TX → C3 RX for status reads, note that thermal printers in this class often drive 5V on TX. Use a simple divider (e.g., 10 kΩ + 20 kΩ) or a cheap bidirectional level shifter on that single line. Outbound (C3 → printer) needs nothing.
 
 ### Determining baud rate
 
