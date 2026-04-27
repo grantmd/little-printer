@@ -31,7 +31,7 @@ static void format_date(char *out, size_t out_size) {
      * leaves the buffer uninitialised. Pre-zero the buffer for safety.
      */
     out[0] = '\0';
-    strftime(out, out_size, "%A, %B %d, %Y", &lt);
+    strftime(out, out_size, "%A, %B %d", &lt);
     for (char *p = out; *p; p++) *p = (char)toupper((unsigned char)*p);
 }
 
