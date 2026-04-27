@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type formData struct {
@@ -39,7 +40,44 @@ func newRouter(db *sql.DB, token string) http.Handler {
 	})
 
 	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not implemented", http.StatusNotImplemented)
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "bad form", http.StatusBadRequest)
+			return
+		}
+		sender, ok := validateSender(r.PostFormValue("sender"))
+		if !ok {
+			http.Error(w, "sender must be 1-24 characters", http.StatusBadRequest)
+			return
+		}
+		message, ok := validateMessage(r.PostFormValue("message"))
+		if !ok {
+			http.Error(w, "message must be 1-280 characters", http.StatusBadRequest)
+			return
+		}
+		n, err := countPending(db)
+		if err != nil {
+			log.Printf("countPending: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if n >= maxQueueSize {
+			http.Error(w, "queue full — try again after tomorrow's print", http.StatusTooManyRequests)
+			return
+		}
+		if _, err := insertMessage(db, sender, message, time.Now().Unix()); err != nil {
+			log.Printf("insertMessage: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		// Render the form again with a "queued!" status.
+		renderForm(w, db, tmpl, formData{
+			Status:      "queued — thanks!",
+			StatusClass: "ok",
+		})
 	})
 
 	mux.HandleFunc("/pending", func(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +96,27 @@ func newRouter(db *sql.DB, token string) http.Handler {
 	})
 
 	mux.HandleFunc("/confirm", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not implemented", http.StatusNotImplemented)
+		if !checkAuth(r, token) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var body struct {
+			IDs []int64 `json:"ids"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		if err := deleteByIDs(db, body.IDs); err != nil {
+			log.Printf("deleteByIDs: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	return mux
