@@ -8,6 +8,7 @@ idf_component_register(
         "quote.c"
         "text_wrap.c"
         "briefing.c"
+        "messages.c"
     INCLUDE_DIRS "."
     REQUIRES
         esp_wifi
