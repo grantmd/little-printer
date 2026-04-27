@@ -4,6 +4,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 
 static const char *TAG = "thermal_printer";
@@ -20,6 +21,17 @@ esp_err_t thermal_printer_init(uart_port_t uart_num,
                                int rx_pin,
                                int baud) {
     s_uart = uart_num;
+
+    /*
+     * Idle the TX line HIGH before configuring the UART. Otherwise the pin
+     * floats during boot ROM execution; the printer reads the line noise
+     * as ESC/POS bytes and prints garbage on cold start. (Soft reset is
+     * unaffected because the pin keeps its UART config across reset.)
+     */
+    gpio_reset_pin(tx_pin);
+    gpio_set_direction(tx_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(tx_pin, 1);
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     const uart_config_t cfg = {
         .baud_rate  = baud,
