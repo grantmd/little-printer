@@ -9,6 +9,7 @@ idf_component_register(
         "text_wrap.c"
         "briefing.c"
         "messages.c"
+        "printer_lock.c"
     INCLUDE_DIRS "."
     REQUIRES
         esp_wifi
