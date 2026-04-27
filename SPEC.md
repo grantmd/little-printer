@@ -469,9 +469,8 @@ Confirm this by checking `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` (or `CONFIG_ESP_
 
 ## Future extensions (out of scope for v1)
 
-> **Update:** The "ad-hoc print this messages" item has shipped — see the public message queue feature documented in [README.md](./README.md) and `docs/superpowers/specs/2026-04-27-hourly-message-poll-design.md`. We chose HTTPS polling over MQTT for simpler firmware, but the same architectural intent. The remaining items below are still genuinely future work.
+> **Update:** The "ad-hoc print this messages" and "printer status feedback" items have shipped — see [README.md](./README.md), `docs/superpowers/specs/2026-04-27-hourly-message-poll-design.md`, and `docs/superpowers/specs/2026-04-27-printer-status-feedback-design.md`. The message queue uses HTTPS polling over a Fly.io-hosted Go service rather than MQTT, but the same architectural intent. The status path uses ESC/POS `DLE EOT 4` over the printer-TX → C3-GPIO20 line that's been wired since v1. The remaining items below are still genuinely future work.
 
-- **Printer status feedback** via ESC/POS `DLE EOT n` real-time queries (paper-end, online/offline, error). Pending hardware verification of the printer's TX voltage; the wiring is in place but the firmware ignores reads today.
 - **Physical button** on a spare GPIO for on-demand affirmations / quotes
 - **Deep sleep + RTC alarm** for battery operation (requires handling Wi-Fi reconnect on wake, not hard but adds code)
 - **OTA updates** via `esp_https_ota` — nice once this lives somewhere inconvenient to flash by cable

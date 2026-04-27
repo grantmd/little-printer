@@ -5,9 +5,12 @@ A XIAO ESP32-C3 drives an MC206H thermal printer to print:
 - A **daily briefing** at 09:00 America/Los_Angeles — date header, weather sprite, current weather for San Carlos, and one inspirational quote.
 - **Short messages** sent by the public via a Fly.io-hosted form. The C3 polls the queue at the top of every hour during waking hours (08:00–22:00 default) and prints whatever's queued.
 
+Both print paths pre-flight a printer status query (ESC/POS `DLE EOT 4`) and silently skip if the printer is offline, unpowered, or out of paper. Queued messages stay queued; the briefing waits for the next day. No silent data loss.
+
 Manual triggers via the USB-CDC serial console:
 - `p` — print the daily briefing immediately
 - `m` — poll the message queue immediately
+- `s` — query printer status (handy for "is the printer alive" diagnostics)
 
 Otherwise the device is silent until the next scheduled cycle.
 
@@ -128,13 +131,11 @@ On a `v*` tag push, `release.yml` builds both firmwares and attaches `bin`/`elf`
 
 ## Known polish items
 
-- **No printer feedback path yet.** If the printer is unpowered, disconnected, or out of paper, the C3 sends UART bytes to a void and confirms the messages anyway — losing them. ESC/POS supports `DLE EOT n` real-time status queries; wiring is in place (printer TX → C3 GPIO20). Pending a multimeter check on the printer's TX voltage (the C3's GPIOs aren't 5V-tolerant).
 - **Weather sprites at 24×24 are too small to read.** Bigger sprites (or a proper icon font) would help.
 - **A 10kΩ pullup from GPIO21 to 3.3V** would silence the burst of garbage that prints during `idf.py flash` (the boot ROM controls the pin during programming).
 
 ## Future scope
 
-- Printer status feedback (the next item in the polish list above — promoted to in-flight)
 - Physical button on a spare GPIO for on-demand quotes
 - Deep sleep + RTC alarm for battery operation
 - OTA updates
