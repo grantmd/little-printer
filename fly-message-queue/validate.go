@@ -5,7 +5,7 @@ import "strings"
 const (
 	maxSenderLen  = 24
 	maxMessageLen = 280
-	maxQueueSize  = 5
+	maxQueueSize  = 3
 )
 
 // validateSender trims whitespace and verifies length. Returns the cleaned

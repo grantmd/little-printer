@@ -37,7 +37,7 @@ func TestFormPageRenders(t *testing.T) {
 	if !strings.Contains(string(body), "<form") {
 		t.Errorf("body did not contain a <form>: %q", string(body))
 	}
-	if !strings.Contains(string(body), "0 / 5") {
+	if !strings.Contains(string(body), fmt.Sprintf("0 / %d", maxQueueSize)) {
 		t.Errorf("body did not contain queue indicator: %q", string(body))
 	}
 }
@@ -119,12 +119,12 @@ func TestSubmitRejectsTooLong(t *testing.T) {
 
 func TestSubmitRejectsWhenQueueFull(t *testing.T) {
 	srv := newTestServer(t)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < maxQueueSize; i++ {
 		form := strings.NewReader("sender=alice&message=hello")
 		resp, _ := http.Post(srv.URL+"/submit", "application/x-www-form-urlencoded", form)
 		resp.Body.Close()
 	}
-	// 6th submission should be rejected.
+	// One past the cap should be rejected.
 	form := strings.NewReader("sender=alice&message=hello")
 	resp, err := http.Post(srv.URL+"/submit", "application/x-www-form-urlencoded", form)
 	if err != nil {
