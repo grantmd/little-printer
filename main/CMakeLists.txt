@@ -18,4 +18,5 @@ idf_component_register(
         esp-tls
         json
         driver
+        thermal_printer
 )
