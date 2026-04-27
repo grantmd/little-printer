@@ -27,6 +27,29 @@ static void console_task(void *arg) {
     }
 }
 
+static void briefing_task(void *arg) {
+    int last_printed_yday = -1;
+    while (1) {
+        time_t now = time(NULL);
+        struct tm lt;
+        localtime_r(&now, &lt);
+
+        bool should_print =
+            lt.tm_hour == CONFIG_PRINT_HOUR &&
+            lt.tm_min  == CONFIG_PRINT_MINUTE &&
+            lt.tm_yday != last_printed_yday;
+
+        if (should_print) {
+            ESP_LOGI(TAG, "scheduled briefing trigger");
+            briefing_run();
+            last_printed_yday = lt.tm_yday;
+            time_sync_refresh();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(30 * 1000));
+    }
+}
+
 void app_main(void) {
     ESP_LOGI(TAG, "little-printer booting");
 
@@ -34,6 +57,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    /* Init the printer early so GPIO21 isn't floating during Wi-Fi connect. */
     ESP_ERROR_CHECK(thermal_printer_init(PRINTER_UART_NUM,
                                          PRINTER_TX_PIN,
                                          PRINTER_RX_PIN,
@@ -56,8 +80,9 @@ void app_main(void) {
     thermal_printer_println(boot_line);
     thermal_printer_feed(2);
 
-    xTaskCreate(console_task, "console", 4096, NULL, 5, NULL);
+    xTaskCreate(console_task,  "console",  4096, NULL, 5, NULL);
+    xTaskCreate(briefing_task, "briefing", 8192, NULL, 4, NULL);
 
-    ESP_LOGI(TAG, "ready — type 'p' on the serial console for a manual briefing");
+    ESP_LOGI(TAG, "ready");
     while (1) vTaskDelay(pdMS_TO_TICKS(60 * 1000));
 }
