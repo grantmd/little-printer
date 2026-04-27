@@ -11,3 +11,6 @@ diag/managed_components/
 /sdkconfig.old
 /dependencies.lock
 /managed_components/
+
+# clangd cache (regenerated automatically by the language server)
+.cache/
