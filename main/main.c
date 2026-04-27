@@ -69,7 +69,7 @@ void app_main(void) {
         time_sync_init();
     }
 
-    xTaskCreate(console_task,  "console",  4096, NULL, 5, NULL);
+    xTaskCreate(console_task,  "console",  8192, NULL, 5, NULL);
     xTaskCreate(briefing_task, "briefing", 8192, NULL, 4, NULL);
 
     ESP_LOGI(TAG, "ready — briefing scheduled for %02d:%02d",
