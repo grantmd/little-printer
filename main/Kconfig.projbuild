@@ -1,0 +1,27 @@
+menu "Briefing Printer Config"
+
+config WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+
+config WIFI_PASSWORD
+    string "Wi-Fi Password"
+    default ""
+
+config PRINT_HOUR
+    int "Hour to print briefing (0-23, local time)"
+    default 9
+    range 0 23
+
+config PRINT_MINUTE
+    int "Minute to print briefing (0-59)"
+    default 0
+    range 0 59
+
+config PRINTER_BAUD
+    int "Printer UART baud rate"
+    default 9600
+    help
+      Match the rate reported on the printer's self-test page.
+
+endmenu

@@ -4,3 +4,10 @@ diag/sdkconfig
 diag/sdkconfig.old
 diag/dependencies.lock
 diag/managed_components/
+
+# ESP-IDF top-level build artifacts
+/build/
+/sdkconfig
+/sdkconfig.old
+/dependencies.lock
+/managed_components/
