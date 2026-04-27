@@ -25,8 +25,13 @@ static void format_date(char *out, size_t out_size) {
     time_t now = time(NULL);
     struct tm lt;
     localtime_r(&now, &lt);
-    /* "WEDNESDAY, APRIL 22, 2026" — uppercase weekday + month. */
-    strftime(out, out_size, "%A, %B %-d, %Y", &lt);
+    /*
+     * %d (zero-padded) instead of %-d (no-leading-zero) — the latter is a
+     * GNU extension that newlib doesn't support, and on failure newlib
+     * leaves the buffer uninitialised. Pre-zero the buffer for safety.
+     */
+    out[0] = '\0';
+    strftime(out, out_size, "%A, %B %d, %Y", &lt);
     for (char *p = out; *p; p++) *p = (char)toupper((unsigned char)*p);
 }
 
