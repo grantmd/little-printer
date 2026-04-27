@@ -13,7 +13,7 @@ jobs:
     name: Build firmware and publish release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build briefing firmware
         uses: espressif/esp-idf-ci-action@v1
@@ -49,7 +49,7 @@ jobs:
           zip -r "../diag-${GITHUB_REF_NAME}.zip"     diag
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             briefing-${{ github.ref_name }}.zip
