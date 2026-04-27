@@ -52,6 +52,23 @@ void briefing_run(void) {
     /* Serialise printer access — messages_task may also fire this minute. */
     xSemaphoreTake(s_print_mutex, portMAX_DELAY);
 
+    /* Pre-flight: if the printer is offline or out of paper, skip the
+     * print so we don't quietly drop output to a void. */
+    thermal_printer_status_t pstatus;
+    if (thermal_printer_query_status(&pstatus) != ESP_OK) {
+        ESP_LOGW(TAG, "printer not responding; skipping briefing");
+        xSemaphoreGive(s_print_mutex);
+        return;
+    }
+    if (pstatus.paper_end) {
+        ESP_LOGW(TAG, "printer out of paper; skipping briefing");
+        xSemaphoreGive(s_print_mutex);
+        return;
+    }
+    if (pstatus.paper_near_end) {
+        ESP_LOGW(TAG, "printer paper near end — printing anyway");
+    }
+
     thermal_printer_reset();
     thermal_printer_set_justify('C');
     thermal_printer_println("================================");
