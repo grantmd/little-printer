@@ -1,0 +1,15 @@
+# flyctl launch added from .gitignore
+# Local binaries
+fly-message-queue
+queue.db
+queue.db-journal
+queue.db-wal
+queue.db-shm
+
+# IDE noise
+.idea
+.vscode
+
+# Go test cache
+coverage.out
+fly.toml

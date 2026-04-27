@@ -1,36 +1,49 @@
-# Fly config — adjust app name on first `fly launch`.
-app = "little-printer"
-primary_region = "sjc"
+# fly.toml app configuration file generated for little-printer on 2026-04-27T12:18:20-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'little-printer'
+primary_region = 'sjc'
 
 [build]
 
 [env]
-  LISTEN_ADDR = ":8080"
-  DB_PATH     = "/data/queue.db"
+  DB_PATH = '/data/queue.db'
+  LISTEN_ADDR = ':8080'
 
 [[mounts]]
-  source      = "queue_data"
-  destination = "/data"
+  source = 'queue_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[services]]
+  protocol = 'tcp'
   internal_port = 8080
-  protocol      = "tcp"
 
   [[services.ports]]
-    port     = 80
-    handlers = ["http"]
+    port = 80
+    handlers = ['http']
     force_https = true
 
   [[services.ports]]
-    port     = 443
-    handlers = ["tls", "http"]
+    port = 443
+    handlers = ['tls', 'http']
 
-[[services.tcp_checks]]
-  interval     = "30s"
-  timeout      = "5s"
-  grace_period = "10s"
+  [[services.tcp_checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
 
 [[vm]]
-  cpu_kind = "shared"
-  cpus     = 1
-  memory   = "256mb"
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
