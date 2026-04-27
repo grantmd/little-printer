@@ -27,6 +27,17 @@ static void console_task(void *arg) {
         } else if (c == 'm' || c == 'M') {
             ESP_LOGI(TAG, "console: manual message poll");
             messages_print_pending();
+        } else if (c == 's' || c == 'S') {
+            thermal_printer_status_t status;
+            xSemaphoreTake(s_print_mutex, portMAX_DELAY);
+            esp_err_t err = thermal_printer_query_status(&status);
+            xSemaphoreGive(s_print_mutex);
+            if (err == ESP_OK) {
+                ESP_LOGI(TAG, "console status: paper_end=%d near_end=%d",
+                         status.paper_end, status.paper_near_end);
+            } else {
+                ESP_LOGW(TAG, "console status: no response (printer offline or GPIO20 dead)");
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -98,6 +109,15 @@ void app_main(void) {
         ESP_LOGE(TAG, "Wi-Fi connect failed; continuing offline");
     } else {
         time_sync_init();
+    }
+
+    /* One-shot smoke test so the boot log surfaces printer health early. */
+    thermal_printer_status_t boot_status;
+    if (thermal_printer_query_status(&boot_status) == ESP_OK) {
+        ESP_LOGI(TAG, "printer reachable: paper_end=%d near_end=%d",
+                 boot_status.paper_end, boot_status.paper_near_end);
+    } else {
+        ESP_LOGW(TAG, "printer not responding on boot — check power, cable, or GPIO20");
     }
 
     xTaskCreate(console_task,  "console",  8192, NULL, 5, NULL);
