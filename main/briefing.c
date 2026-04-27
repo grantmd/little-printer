@@ -1,1 +1,94 @@
-/* placeholder — implemented in a later task */
+#include "briefing.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <ctype.h>
+
+#include "esp_log.h"
+
+#include "config.h"
+#include "thermal_printer.h"
+#include "weather.h"
+#include "quote.h"
+#include "text_wrap.h"
+
+static const char *TAG = "briefing";
+
+static void println_indented(const char *line) {
+    char buf[80];
+    snprintf(buf, sizeof(buf), "  %s", line);
+    thermal_printer_println(buf);
+}
+
+static void format_date(char *out, size_t out_size) {
+    time_t now = time(NULL);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    /* "WEDNESDAY, APRIL 22, 2026" — uppercase weekday + month. */
+    strftime(out, out_size, "%A, %B %-d, %Y", &lt);
+    for (char *p = out; *p; p++) *p = (char)toupper((unsigned char)*p);
+}
+
+void briefing_run(void) {
+    ESP_LOGI(TAG, "briefing_run starting");
+
+    weather_t w;
+    bool have_weather = (weather_fetch(&w) == ESP_OK);
+
+    quote_t q;
+    bool have_quote = (quote_fetch(&q) == ESP_OK);
+
+    char date_line[48];
+    format_date(date_line, sizeof(date_line));
+
+    thermal_printer_reset();
+    thermal_printer_set_justify('C');
+    thermal_printer_println("================================");
+    thermal_printer_set_size('M');
+    thermal_printer_println(date_line);
+    thermal_printer_set_size('S');
+    thermal_printer_println("================================");
+    thermal_printer_feed(1);
+
+    /* Weather block (or degraded line). */
+    thermal_printer_set_justify('L');
+    if (have_weather) {
+        char line[64];
+        println_indented(LOCATION_NAME);
+        snprintf(line, sizeof(line), "%dF, %s", w.temp_f, w.description);
+        println_indented(line);
+        snprintf(line, sizeof(line), "Wind: %d mph", w.wind_mph);
+        println_indented(line);
+    } else {
+        println_indented("weather unavailable");
+    }
+    thermal_printer_feed(1);
+
+    thermal_printer_set_justify('C');
+    thermal_printer_println("--------------------------------");
+    thermal_printer_feed(1);
+
+    /* Quote block (or degraded line, or skip if both fail). */
+    thermal_printer_set_justify('L');
+    if (have_quote) {
+        char wrap_in[320];
+        snprintf(wrap_in, sizeof(wrap_in), "\"%s\"", q.body);
+        text_wrap(wrap_in, PRINT_LINE_WIDTH - 4, &println_indented);
+        thermal_printer_println("");
+        char attribution[80];
+        snprintf(attribution, sizeof(attribution), "       -- %s", q.author);
+        thermal_printer_println(attribution);
+    } else if (!have_weather) {
+        /* Both APIs failed — confirm the schedule still ran. */
+        println_indented("nothing to report today");
+    }
+
+    thermal_printer_feed(1);
+    thermal_printer_set_justify('C');
+    thermal_printer_println("================================");
+    thermal_printer_feed(3);
+    thermal_printer_sleep(60);
+
+    ESP_LOGI(TAG, "briefing_run done");
+}
