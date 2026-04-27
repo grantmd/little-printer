@@ -56,6 +56,15 @@ void briefing_run(void) {
     thermal_printer_println("================================");
     thermal_printer_feed(1);
 
+    /* Weather sprite, centered above the weather text. */
+    if (have_weather) {
+        const uint8_t *sprite = weather_sprite_for_code(w.weather_code);
+        if (sprite) {
+            thermal_printer_set_justify('C');
+            thermal_printer_print_bitmap(3, 24, sprite);
+        }
+    }
+
     /* Weather block (or degraded line). */
     thermal_printer_set_justify('L');
     if (have_weather) {

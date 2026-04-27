@@ -26,3 +26,13 @@ void thermal_printer_print(const char *text);
 void thermal_printer_println(const char *text);
 void thermal_printer_feed(uint8_t lines);
 void thermal_printer_sleep(uint16_t seconds);
+
+/*
+ * Print a raster bitmap via ESC/POS GS v 0. `width_bytes` is the row
+ * stride in bytes — image width in pixels divided by 8, rounded up.
+ * `height` is the number of rows. Data is row-major, MSB-first
+ * horizontally (bit 7 of byte 0 is the leftmost pixel of row 0). 1 = ink.
+ */
+void thermal_printer_print_bitmap(uint16_t width_bytes,
+                                  uint16_t height,
+                                  const uint8_t *data);

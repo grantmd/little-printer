@@ -126,3 +126,28 @@ void thermal_printer_sleep(uint16_t seconds) {
                           (uint8_t)((seconds >> 8) & 0xFF) };
     tx(b, sizeof(b));
 }
+
+void thermal_printer_print_bitmap(uint16_t width_bytes,
+                                  uint16_t height,
+                                  const uint8_t *data) {
+    if (!data || width_bytes == 0 || height == 0) return;
+
+    /* GS v 0 m xL xH yL yH ... — m=0 (normal density). */
+    const uint8_t header[] = {
+        0x1D, 0x76, 0x30, 0x00,
+        (uint8_t)(width_bytes & 0xFF), (uint8_t)((width_bytes >> 8) & 0xFF),
+        (uint8_t)(height & 0xFF),       (uint8_t)((height >> 8) & 0xFF),
+    };
+    tx(header, sizeof(header));
+
+    /* Send the pixel data in chunks so we don't overrun the printer's
+     * input buffer at 9600 baud. */
+    const size_t total = (size_t)width_bytes * height;
+    const size_t chunk = 64;
+    for (size_t off = 0; off < total; off += chunk) {
+        size_t n = (total - off > chunk) ? chunk : (total - off);
+        tx(data + off, n);
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    vTaskDelay(pdMS_TO_TICKS(80));
+}
