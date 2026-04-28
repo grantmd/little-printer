@@ -163,7 +163,33 @@ esp_err_t messages_print_pending(void) {
     size_t to_confirm = n > 8 ? 8 : n;
     for (size_t i = 0; i < to_confirm; i++) {
         thermal_printer_set_justify('L');
-        text_wrap(msgs[i].message, PRINT_LINE_WIDTH - 4, &println_indented);
+
+        /* Split on \n so user-entered paragraph breaks are preserved.
+         * text_wrap collapses internal whitespace within each paragraph;
+         * splitting here is what makes multi-line messages render as
+         * multi-line prints. \r before \n (browsers send CRLF) is stripped. */
+        const char *p = msgs[i].message;
+        while (*p) {
+            const char *eol = p;
+            while (*eol && *eol != '\n') eol++;
+
+            size_t plen = (size_t)(eol - p);
+            if (plen > 0 && p[plen - 1] == '\r') plen--;
+
+            char para[320];
+            if (plen >= sizeof(para)) plen = sizeof(para) - 1;
+            memcpy(para, p, plen);
+            para[plen] = '\0';
+
+            if (para[0] == '\0') {
+                thermal_printer_println("");
+            } else {
+                text_wrap(para, PRINT_LINE_WIDTH - 4, &println_indented);
+            }
+
+            p = (*eol == '\n') ? eol + 1 : eol;
+        }
+
         char attribution[48];
         snprintf(attribution, sizeof(attribution), "       -- %s", msgs[i].sender);
         thermal_printer_println(attribution);
