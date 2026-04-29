@@ -66,7 +66,7 @@
             src="/static/little-printer.jpeg"
             alt="my little printer"
         />
-        <p class="queue">queue: {{.QueueSize}} / {{.QueueMax}}</p>
+        <p class="queue">queue: {{.QueueSize}} / {{.QueueMax}} (queue is processed ~hourly)</p>
         {{if .Status}}
         <p class="{{.StatusClass}}">{{.Status}}</p>
         {{end}}
