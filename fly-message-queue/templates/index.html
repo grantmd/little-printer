@@ -17,6 +17,12 @@
                 margin-top: 1rem;
                 font-weight: 600;
             }
+            img.hero {
+                display: block;
+                width: 100%;
+                height: auto;
+                margin: 1rem 0;
+            }
             input,
             textarea {
                 width: 100%;
@@ -55,6 +61,11 @@
     </head>
     <body>
         <h1>send a message to my little printer</h1>
+        <img
+            class="hero"
+            src="/static/little-printer.jpeg"
+            alt="my little printer"
+        />
         <p class="queue">queue: {{.QueueSize}} / {{.QueueMax}}</p>
         {{if .Status}}
         <p class="{{.StatusClass}}">{{.Status}}</p>

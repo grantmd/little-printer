@@ -24,6 +24,9 @@ func newRouter(db *sql.DB, token string) http.Handler {
 	tmpl := template.Must(template.ParseFiles("templates/index.html"))
 	mux := http.NewServeMux()
 
+	/* Serve files from ./static/ at /static/. Used for the page's image. */
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)

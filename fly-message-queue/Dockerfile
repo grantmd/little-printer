@@ -11,6 +11,7 @@ FROM gcr.io/distroless/static-debian12
 WORKDIR /app
 COPY --from=build /out/fly-message-queue /app/fly-message-queue
 COPY templates /app/templates
+COPY static /app/static
 ENV DB_PATH=/data/queue.db
 ENV LISTEN_ADDR=:8080
 EXPOSE 8080
