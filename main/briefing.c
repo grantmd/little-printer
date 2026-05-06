@@ -28,12 +28,15 @@ static void format_date(char *out, size_t out_size) {
     struct tm lt;
     localtime_r(&now, &lt);
     /*
-     * %d (zero-padded) instead of %-d (no-leading-zero) — the latter is a
-     * GNU extension that newlib doesn't support, and on failure newlib
-     * leaves the buffer uninitialised. Pre-zero the buffer for safety.
+     * Format the day-of-month from tm_mday rather than %-d, which is a GNU
+     * extension newlib doesn't support (and newlib leaves the buffer
+     * uninitialised on failure).
      */
-    out[0] = '\0';
-    strftime(out, out_size, "%A, %B %d", &lt);
+    char dow[8] = {0};
+    char month[16] = {0};
+    strftime(dow, sizeof(dow), "%a", &lt);
+    strftime(month, sizeof(month), "%b", &lt);
+    snprintf(out, out_size, "%s, %s %d", dow, month, lt.tm_mday);
     for (char *p = out; *p; p++) *p = (char)toupper((unsigned char)*p);
 }
 
