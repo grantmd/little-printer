@@ -81,12 +81,12 @@ Two parts on one print plate:
 All seeded with MC206H datasheet defaults; the user overrides with caliper
 measurements before final render.
 
-| Variable | Meaning | Default (to verify) |
+| Variable | Meaning | Value (measured) |
 |---|---|---|
-| `cutout_w`, `cutout_h` | Panel cutout (printer drop-through hole) | TBD — measure |
-| `bezel_w`, `bezel_h` | Bezel/faceplate outer size (lip) | TBD — measure |
-| `panel_thickness` | Top-face thickness = clip spec | 2 mm — verify |
-| `body_depth` | Printer body depth behind panel, incl. loaded roll | TBD — measure |
+| `cutout_w`, `cutout_h` | Panel cutout (printer drop-through hole) | 77.15 × 53.3 mm |
+| `bezel_w`, `bezel_h` | Bezel/faceplate outer size (lip) | 82.1 × 58 mm |
+| `panel_thickness` | Top-face thickness (clips clamp up to ~8 mm) | 3 mm |
+| `body_depth` | Printer body depth behind panel, incl. loaded roll | 44.4 mm |
 | `roll_clearance` | Extra space below body for roll | small margin |
 | `floor_gap` | Gap from printer bottom to desk plane | derived |
 | `wall` | Tray wall thickness | 2.4 mm (FDM-friendly) |
@@ -97,16 +97,19 @@ measurements before final render.
 `// === MEASUREMENTS ===` block holds the printer-specific values; everything
 below is derived geometry.
 
-## Pending measurements (blockers for final render, not for design)
+## Measurements (captured 2026-06-20)
 
-1. Panel cutout W × H
-2. Bezel/faceplate outer W × H
-3. Recommended panel thickness for the clips
-4. Body depth behind panel, including loaded paper roll
-5. Power JST + 4-pin TTL JST exit locations (back / side / bottom)
+All caliper-measured from the user's unit:
 
-The model renders with defaults so geometry can be reviewed before the user has
-final numbers; the user plugs in caliper values and re-renders for the print.
+1. Panel cutout: **77.15 × 53.3 mm**
+2. Bezel/faceplate outer: **82.1 × 58 mm** (≈2.5 mm lip overhang per side)
+3. Panel thickness: top face set to **3 mm**; clips are sprung swivel type and
+   self-adjust up to ~8 mm, so 3 mm clamps firmly with margin.
+4. Body depth behind panel (incl. loaded roll): **44.4 mm**
+
+Still user's choice, defaulted in the model (one-line variables to move): the
+DC-power notch wall and USB-C notch wall. Default: USB-C on the right side wall
+by the C3 mount, DC power on the back wall.
 
 ## Print notes
 
